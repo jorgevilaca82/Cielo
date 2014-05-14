@@ -5,6 +5,7 @@ using System.Text;
 using System.Configuration;
 using Cielo.Messages;
 using Cielo.Helpers;
+using System.Threading.Tasks;
 
 namespace Cielo
 {
@@ -15,6 +16,7 @@ namespace Cielo
         private string Numero;
         private string Chave;
         private Uri Endpoint;
+        private readonly string defaultDateFormat = "yyyyMMdd";
 
         #endregion
 
@@ -51,14 +53,17 @@ namespace Cielo
             var req = RequisicaoNovaTransacaoAutorizar.AutorizarAutenticadaENaoAutenticada;
             var capturar = true;
 
-            return CriarTransacao(dadosPedido, dadosEc, formaPagamento, urlRetorno, req, capturar);
+            return CriarTransacao(dadosPedido, dadosEc, formaPagamento, urlRetorno, req, capturar).Result;
         }
 
-        public Retorno CriarTransacao(DadosPedido dadosPedido, DadosEcAutenticacao dadosEc, FormaPagamento formaPagamento,
-                                      Uri urlRetorno, RequisicaoNovaTransacaoAutorizar reqAutorizar, bool capturar)
+        public Task<Retorno> CriarTransacao(
+            DadosPedido dadosPedido,
+            DadosEcAutenticacao dadosEc,
+            FormaPagamento formaPagamento,
+            Uri urlRetorno,
+            RequisicaoNovaTransacaoAutorizar reqAutorizar,
+            bool capturar)
         {
-            var ret = new Retorno();
-
             var msg = new RequisicaoNovaTransacao
             {
                 id = dadosPedido.numero,
@@ -71,126 +76,66 @@ namespace Cielo
                 capturar = capturar
             };
 
-            try
-            {
-                var xml = msg.ToXml<RequisicaoNovaTransacao>(Encoding.GetEncoding("iso-8859-1"));
-
-                var res = EnviarMensagem(xml);
-
-                ret = XmlToRetorno(res);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
-            return ret;
+            return SetRetorno<RequisicaoNovaTransacao>(msg);
         }
 
-        public Retorno ConsultarTransacao(string tid)
+        public Task<Retorno> ConsultarTransacao(string tid)
         {
-            var ret = new Retorno();
-
             var dadosEc = new DadosEcAutenticacao { numero = Numero, chave = Chave };
 
             var msg = new RequisicaoConsulta
             {
-                id = DateTime.Now.ToString("yyyyMMdd"),
+                id = DateTime.Now.ToString(defaultDateFormat),
                 versao = MensagemVersao.v110,
                 tid = tid,
                 dadosec = dadosEc
             };
 
-            try
-            {
-                var xml = msg.ToXml<RequisicaoConsulta>(Encoding.GetEncoding("iso-8859-1"));
-
-                var res = EnviarMensagem(xml);
-
-                ret = XmlToRetorno(res);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
-            return ret;
+            return SetRetorno<RequisicaoConsulta>(msg);
         }
 
-        public Retorno AutorizarTransacao(string tid)
+        public Task<Retorno> AutorizarTransacao(string tid)
         {
-            var ret = new Retorno();
-
             var dadosEc = new DadosEcAutenticacao { numero = Numero, chave = Chave };
 
             var msg = new RequisicaoAutorizacaoTid
             {
-                id = DateTime.Now.ToString("yyyyMMdd"),
+                id = DateTime.Now.ToString(defaultDateFormat),
                 versao = MensagemVersao.v110,
                 tid = tid,
                 dadosec = dadosEc
             };
 
-            try
-            {
-                var xml = msg.ToXml<RequisicaoAutorizacaoTid>(Encoding.GetEncoding("iso-8859-1"));
-
-                var res = EnviarMensagem(xml);
-
-                ret = XmlToRetorno(res);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
-            return ret;
+            return SetRetorno<RequisicaoAutorizacaoTid>(msg);
         }
 
-        public Retorno CancelarTransacao(string tid)
+        public Task<Retorno> CancelarTransacao(string tid)
         {
-            var ret = new Retorno();
-
             var dadosEc = new DadosEcAutenticacao { numero = Numero, chave = Chave };
 
             var msg = new RequisicaoCancelamento
             {
-                id = DateTime.Now.ToString("yyyyMMdd"),
+                id = DateTime.Now.ToString(defaultDateFormat),
                 versao = MensagemVersao.v110,
                 tid = tid,
                 dadosec = dadosEc
             };
 
-            try
-            {
-                var xml = msg.ToXml<RequisicaoCancelamento>(Encoding.GetEncoding("iso-8859-1"));
-
-                var res = EnviarMensagem(xml);
-
-                ret = XmlToRetorno(res);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
-            return ret;
+            return SetRetorno<RequisicaoCancelamento>(msg);
         }
 
         public Retorno CapturarTransacao(string tid)
         {
-            return CapturarTransacao(tid, -1, string.Empty);
+            return CapturarTransacao(tid, -1, string.Empty).Result;
         }
 
-        public Retorno CapturarTransacao(string tid, decimal valor, string anexo)
+        public Task<Retorno> CapturarTransacao(string tid, decimal valor, string anexo)
         {
-            var ret = new Retorno();
-
             var dadosEc = new DadosEcAutenticacao { numero = Numero, chave = Chave };
 
             var msg = new RequisicaoCaptura
             {
-                id = DateTime.Now.ToString("yyyyMMdd"),
+                id = DateTime.Now.ToString(defaultDateFormat),
                 versao = MensagemVersao.v110,
                 tid = tid,
                 dadosec = dadosEc
@@ -202,25 +147,26 @@ namespace Cielo
             if (!string.IsNullOrWhiteSpace(anexo))
                 msg.anexo = anexo;
 
-            try
-            {
-                var xml = msg.ToXml<RequisicaoCaptura>(Encoding.GetEncoding("iso-8859-1"));
-
-                var res = EnviarMensagem(xml);
-
-                ret = XmlToRetorno(res);
-            }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
-
-            return ret;
+            return SetRetorno<RequisicaoCaptura>(msg);
         }
 
         #endregion
 
         #region "Private Methods"
+
+        private async Task<Retorno> SetRetorno<T>(T msg)
+        {
+            try
+            {
+                var xml = msg.ToXml<T>(Encoding.GetEncoding("iso-8859-1"));
+                var res = await EnviarMensagem(xml);
+                return XmlToRetorno(res);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
 
         private Retorno XmlToRetorno(string xml)
         {
@@ -247,11 +193,12 @@ namespace Cielo
             return ret;
         }
 
-        private string EnviarMensagem(string xml)
+        private async Task<string> EnviarMensagem(string xml)
         {
             var http = new EasyHttpClient("iso-8859-1", "application/x-www-form-urlencoded", "CieloClient");
-
-            return http.Post(Endpoint.AbsoluteUri, string.Format("mensagem={0}", xml));
+            Task<string> res = http.PostAsync(Endpoint.AbsoluteUri, string.Format("mensagem={0}", xml));
+            string r = await res;
+            return r;
         }
 
         #endregion
