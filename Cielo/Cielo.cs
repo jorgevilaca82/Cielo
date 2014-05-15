@@ -15,6 +15,8 @@ namespace Cielo
 
         private string Numero;
         private string Chave;
+        private string LojaNumero;
+        private string LojaChave;
         private Uri Endpoint;
         private readonly string defaultDateFormat = "yyyyMMdd";
 
@@ -30,11 +32,20 @@ namespace Cielo
             if (ConfigurationManager.AppSettings["Cielo.Chave"] == null)
                 throw new ArgumentNullException("Cielo.Chave");
 
+            if (ConfigurationManager.AppSettings["Cielo.LojaNumero"] == null)
+                throw new ArgumentNullException("Cielo.LojaNumero");
+
+            if (ConfigurationManager.AppSettings["Cielo.LojaChave"] == null)
+                throw new ArgumentNullException("Cielo.LojaChave");
+
             if (ConfigurationManager.AppSettings["Cielo.Ambiente"] == null)
                 throw new ArgumentNullException("Cielo.Ambientes");
 
             Numero = ConfigurationManager.AppSettings["Cielo.Numero"];
             Chave = ConfigurationManager.AppSettings["Cielo.Chave"];
+
+            LojaNumero = ConfigurationManager.AppSettings["Cielo.LojaNumero"];
+            LojaChave = ConfigurationManager.AppSettings["Cielo.LojaChave"];
 
             if (ConfigurationManager.AppSettings["Cielo.Ambiente"].Equals("Producao"))
                 Endpoint = new Uri(ConfigurationManager.AppSettings["Cielo.UrlProducao"]);
