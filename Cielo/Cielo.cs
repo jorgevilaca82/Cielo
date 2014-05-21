@@ -61,8 +61,14 @@ namespace Cielo
         {
             var dadosEc = new DadosEcAutenticacao { numero = Numero, chave = Chave };
             var formaPagamento = new FormaPagamento { bandeira = bandeira, parcelas = 1, produto = FormaPagamentoProduto.CreditoAVista };
-            var req = RequisicaoNovaTransacaoAutorizar.AutorizarAutenticadaENaoAutenticada;
-            var capturar = true;
+            
+            // Não funciona em QA segundo o próprio suporte da Cielo
+            //var req = RequisicaoNovaTransacaoAutorizar.AutorizarAutenticadaENaoAutenticada;
+            //var capturar = true;
+            
+            var req = RequisicaoNovaTransacaoAutorizar.AutorizarSemPassarPorAutenticacao;
+            var capturar = false;
+
 
             return CriarTransacao(dadosPedido, dadosEc, formaPagamento, urlRetorno, req, capturar).Result;
         }
